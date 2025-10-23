@@ -1,4 +1,4 @@
-from crewai.tools import Tool
+from crewai.tools.tool import Tool
 import csv
 import json
 from pathlib import Path
@@ -9,6 +9,7 @@ import openpyxl
 from bs4 import BeautifulSoup
 from PIL import Image
 import pytesseract
+
 
 class ReadFileTool(Tool):
     """
