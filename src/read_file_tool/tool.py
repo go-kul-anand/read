@@ -1,4 +1,12 @@
-from crewai.tools.tool import Tool
+# src/read_file_tool/tool.py
+
+# Import base Tool class from CrewAI
+try:
+    from crewai import Tool  # latest CrewAI v2 uses this
+except ImportError:
+    # fallback for older versions
+    from crewai.tools import Tool
+
 import csv
 import json
 from pathlib import Path
@@ -10,17 +18,19 @@ from bs4 import BeautifulSoup
 from PIL import Image
 import pytesseract
 
-
 class ReadFileTool(Tool):
     """
-    A CrewAI Tool to read multiple file types:
+    CrewAI Tool to read multiple file types:
     CSV, PDF, DOCX, TXT, JSON, XLSX, PPTX, HTML, JPG/PNG, MD
     """
 
-    def read_file(self, file_path: str):
+    name = "ReadFileTool"
+    description = "Read CSV, PDF, DOCX, TXT, JSON, XLSX, PPTX, HTML, JPG/PNG, and MD files"
+
+    def run(self, file_path: str):
         file_path = Path(file_path)
         if not file_path.exists():
-            return f"{file_path.name} not found. Please add this file to the folder to test."
+            return f"{file_path.name} not found."
 
         suffix = file_path.suffix.lower()
 
@@ -41,7 +51,7 @@ class ReadFileTool(Tool):
                 doc = Document(file_path)
                 return "\n".join([p.text for p in doc.paragraphs])
 
-            elif suffix == ".txt" or suffix == ".md":
+            elif suffix in [".txt", ".md"]:
                 return file_path.read_text(encoding="utf-8")
 
             elif suffix == ".json":
