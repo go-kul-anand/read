@@ -1,46 +1,70 @@
-from crewai.tools import Tool
+from crewai.tools import tool
 import csv
 import json
 import PyPDF2
+import requests
 from docx import Document
+import tempfile
+import os
 
-class ReadFileTool(Tool):
-    name = "read_file_tool"
-    description = "Read CSV, PDF, TXT, DOCX, and JSON files"
-
-    def run(self, file_path: str):
-        file_type = file_path.split(".")[-1].lower()
-
+@tool("read_file")
+def read_file_tool(file_path: str):
+    """
+    Reads CSV, PDF, TXT, DOCX, and JSON files.
+    Supports both local files and Google Drive links.
+    """
+    # --- Detect Google Drive links ---
+    if "drive.google.com" in file_path:
         try:
-            if file_type == "csv":
-                with open(file_path, "r", encoding="utf-8") as f:
-                    reader = csv.DictReader(f)
-                    data = [row for row in reader]
-                return data
+            file_id = file_path.split("/d/")[1].split("/")[0]
+            download_url = f"https://drive.google.com/uc?export=download&id={file_id}"
+            print(f"Downloading from Google Drive: {download_url}")
 
-            elif file_type == "pdf":
-                with open(file_path, "rb") as f:
-                    reader = PyPDF2.PdfReader(f)
-                    text = ""
-                    for page in reader.pages:
-                        text += page.extract_text() + "\n"
-                return text
+            response = requests.get(download_url)
+            response.raise_for_status()
 
-            elif file_type == "txt":
-                with open(file_path, "r", encoding="utf-8") as f:
-                    return f.read()
+            tmp_file = tempfile.NamedTemporaryFile(delete=False)
+            tmp_file.write(response.content)
+            tmp_file.close()
 
-            elif file_type == "docx":
-                doc = Document(file_path)
-                full_text = "\n".join([p.text for p in doc.paragraphs])
-                return full_text
-
-            elif file_type == "json":
-                with open(file_path, "r", encoding="utf-8") as f:
-                    return json.load(f)
-
-            else:
-                return f"File type .{file_type} is not supported in CrewAI v1.1.0"
+            file_path = tmp_file.name
+            print(f"File downloaded to: {file_path}")
 
         except Exception as e:
-            return f"Error reading file: {str(e)}"
+            return f"Error downloading from Google Drive: {e}"
+
+    # --- Regular reading logic ---
+    file_type = file_path.split(".")[-1].lower() if "." in file_path else "pdf"
+
+    try:
+        if file_type == "csv":
+            with open(file_path, "r", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                return [row for row in reader]
+
+        elif file_type == "pdf":
+            with open(file_path, "rb") as f:
+                reader = PyPDF2.PdfReader(f)
+                return "".join([page.extract_text() or "" for page in reader.pages])
+
+        elif file_type == "txt":
+            with open(file_path, "r", encoding="utf-8") as f:
+                return f.read()
+
+        elif file_type == "docx":
+            doc = Document(file_path)
+            return "\n".join([p.text for p in doc.paragraphs])
+
+        elif file_type == "json":
+            with open(file_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+
+        else:
+            return f"Unsupported file type: .{file_type}"
+
+    except Exception as e:
+        return f"Error reading file: {e}"
+
+    finally:
+        if "tmp_file" in locals() and os.path.exists(tmp_file.name):
+            os.unlink(tmp_file.name)

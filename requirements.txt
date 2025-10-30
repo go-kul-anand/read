@@ -1,0 +1,11 @@
+crewai
+PyPDF2
+python-docx
+python-pptx
+openpyxl
+beautifulsoup4
+pillow
+pytesseract
+markdown
+pandas
+lxml

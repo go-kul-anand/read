@@ -1,3 +1,0 @@
-This is a simple text file.
-It can contain any plain text content.
-Local testing should read this easily.
